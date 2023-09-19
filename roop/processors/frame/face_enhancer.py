@@ -2,6 +2,7 @@ from typing import Any, List
 import cv2
 import threading
 import gfpgan
+import onnxruntime
 
 import roop.globals
 import roop.processors.frame.core
@@ -18,7 +19,7 @@ NAME = 'ROOP.FACE-ENHANCER'
 
 def pre_check() -> bool:
     download_directory_path = resolve_relative_path('../models')
-    conditional_download(download_directory_path, ['https://huggingface.co/tuandung/inswapper/resolve/main/GFPGANv1.4.pth'])
+    conditional_download(download_directory_path, ['https://huggingface.co/tuandung/mynew/resolve/main/GFPGANv1.4.onnx'])
     return True
 
 
@@ -34,9 +35,8 @@ def get_face_enhancer() -> Any:
 
     with THREAD_LOCK:
         if FACE_ENHANCER is None:
-            model_path = resolve_relative_path('../models/GFPGANv1.4.pth')
-            # todo: set models path https://github.com/TencentARC/GFPGAN/issues/399
-            FACE_ENHANCER = gfpgan.GFPGANer(model_path=model_path, upscale=1) # type: ignore[attr-defined]
+            model_path = resolve_relative_path('../models/GFPGANv1.4.onnx')
+            FACE_ENHANCER = onnxruntime.InferenceSession(model_path, providers = roop.globals.execution_providers)
     return FACE_ENHANCER
 
 
@@ -111,7 +111,7 @@ def norm_crop2(img, landmark, image_size, enable_padding=True):
 
 
 def enhance_face(target_face: Face, temp_frame: Frame) -> Frame:
-	face_enhancer = get_frame_processor()
+	face_enhancer = get_face_enhancer()
 	face_size = 512
 	temp_face, matrix = norm_crop2(temp_frame, target_face['kps'], face_size)
 	temp_face = temp_face.astype(numpy.float32)[:,:,::-1] / 255.0
